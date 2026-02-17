@@ -1,0 +1,13 @@
+# Test runner
+pytest>=7.4.0
+pytest-html>=4.1.0
+
+# UI Automation
+selenium>=4.15.0
+webdriver-manager>=4.0.0
+
+# API Testing
+requests>=2.31.0
+
+# Load Testing
+locust>=2.20.0
