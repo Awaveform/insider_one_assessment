@@ -195,7 +195,7 @@ cython_debug/
 .pypirc
 
 # Claude
-.claude
+.claude/
 CLAUDE.md
 
 # Cursor
