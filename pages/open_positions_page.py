@@ -2,8 +2,7 @@ import logging
 import time
 
 from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import TimeoutException
 
 from pages.base_page import BasePage
 
@@ -14,29 +13,77 @@ class OpenPositionsPage(BasePage):
     """Page Object for the Insider Open Positions / Job Listings page."""
 
     # Filter dropdowns
-    LOCATION_FILTER = (By.ID, "select2-filter-by-location-container")
-    DEPARTMENT_FILTER = (By.ID, "select2-filter-by-department-container")
+    LOCATION_FILTER = (By.ID, "filter-by-location")
+    DEPARTMENT_FILTER = (By.ID, "filter-by-department")
     FILTER_DROPDOWN_SEARCH = (By.CSS_SELECTOR, "input.select2-search__field")
-    FILTER_DROPDOWN_RESULTS = (By.CSS_SELECTOR, "ul.select2-results__options li")
+    FILTER_DROPDOWN_RESULTS = (
+        By.CSS_SELECTOR, "ul.select2-results__options li"
+    )
 
     # Job list
     JOB_LIST_CONTAINER = (By.ID, "jobs-list")
     JOB_ITEMS = (By.CSS_SELECTOR, ".position-list-item")
 
     # Within each job item
-    JOB_POSITION = (By.CSS_SELECTOR, ".position-list-item .position-title")
-    JOB_DEPARTMENT = (By.CSS_SELECTOR, ".position-list-item .position-department")
-    JOB_LOCATION = (By.CSS_SELECTOR, ".position-list-item .position-location")
+    JOB_TITLE = (By.CSS_SELECTOR, ".position-list-item .position-title")
+    JOB_DEPARTMENT = (
+        By.CSS_SELECTOR, ".position-list-item .position-department"
+    )
+    JOB_LOCATION = (
+        By.CSS_SELECTOR, ".position-list-item .position-location"
+    )
     VIEW_ROLE_BUTTON = (By.CSS_SELECTOR, ".position-list-item a.btn")
+
+    # Dropdown Departments
+    QUALITY_ASSURANCE = "Quality Assurance"
+
+    # Dropdown Locations
+    ISTANBUL_TURKIYE = "Istanbul, Turkiye"
 
     def filter_by_location(self, location: str) -> None:
         """Select a location from the location filter dropdown."""
-        logger.info(f"Filtering by location: {location}")
-        self.click(self.LOCATION_FILTER)
-        time.sleep(1)  # Wait for dropdown animation
-        option = (By.XPATH, f"//li[contains(text(), '{location}')]")
-        self.click(option)
-        time.sleep(1)  # Wait for filter to apply
+        self.set_dropdowns_option_by_option(
+            locator=self.LOCATION_FILTER, option=location
+        )
+        logger.info(f"Jobs were filtered by location '{location}'")
+
+    def wait_until_positions_filtered_by_location(
+            self,
+            location: str
+    ) -> bool:
+        try:
+            self._wait.until(
+                lambda d: (
+                        (els := d.find_elements(*self.JOB_LOCATION))
+                        and
+                        all(location in el.text for el in els)
+                )
+            )
+            return True
+        except TimeoutException:
+            raise TimeoutError(
+                f"No job list filtered by location='{location}' "
+                f"within {self.timeout}s"
+            )
+
+    def get_listed_positions_titles(self) -> list[str]:
+        return [
+            el.text
+            for el in self.driver.find_elements(*self.JOB_TITLE)
+        ]
+
+    def get_listed_positions_departments(self) -> list[str]:
+        return [
+            el.text
+            for el in self.driver.find_elements(*self.JOB_DEPARTMENT)
+        ]
+
+    def get_listed_positions_locations(self) -> list[str]:
+        return [
+            el.text
+            for el in self.driver.find_elements(*self.JOB_LOCATION)
+        ]
+
 
     def filter_by_department(self, department: str) -> None:
         """Select a department from the department filter dropdown."""

@@ -19,6 +19,7 @@ class CareersPage(BasePage):
     TEAMS_SECTION = (By.CSS_SELECTOR, ".job-team, [data-id='jobs'], .career-position-list")
     LOCATIONS_SECTION = (By.CSS_SELECTOR, ".location-slider, [class*='location']")
     LIFE_AT_INSIDER = (By.XPATH, "//*[contains(text(), 'Life at Insider')]")
+    QA_DEPARTMENT = (By.XPATH, "//option[text()='Quality Assurance']")
 
     def open_qa_careers(self) -> "CareersPage":
         """Navigate to the QA Careers page."""
@@ -29,6 +30,7 @@ class CareersPage(BasePage):
         """Scroll to and click 'See all QA jobs' link."""
         self.scroll_to_element(self.SEE_ALL_QA_JOBS)
         self.click(self.SEE_ALL_QA_JOBS)
+        self.find_visible_and_selected(self.QA_DEPARTMENT, timeout=60)
         logger.info("Clicked 'See all QA jobs'")
 
     def is_page_title_displayed(self) -> bool:

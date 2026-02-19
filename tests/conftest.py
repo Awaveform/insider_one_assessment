@@ -4,10 +4,10 @@ import logging
 import pytest
 from datetime import datetime
 from selenium import webdriver
-from selenium.webdriver.chrome.service import Service as ChromeService
-from selenium.webdriver.firefox.service import Service as FirefoxService
-from webdriver_manager.chrome import ChromeDriverManager
-from webdriver_manager.firefox import GeckoDriverManager
+
+from pages.careers_page import CareersPage
+from pages.home_page import HomePage
+from pages.open_positions_page import OpenPositionsPage
 
 logger = logging.getLogger(__name__)
 
@@ -27,10 +27,10 @@ def pytest_addoption(parser):
     )
 
 
-@pytest.fixture
+@pytest.fixture(scope="class")
 def driver(request):
     """Single-browser fixture controlled by --browser CLI flag."""
-    browser_name = request.config.getoption("--browser")
+    browser_name = request.config.getoption(name="--browser", default="chrome")
     yield from _create_driver(browser_name)
 
 
@@ -43,14 +43,12 @@ def _create_driver(browser_name: str):
         options.add_argument("--start-maximized")
         options.add_argument("--disable-notifications")
         options.add_argument("--disable-popup-blocking")
-        service = ChromeService(ChromeDriverManager().install())
-        _driver = webdriver.Chrome(service=service, options=options)
+        _driver = webdriver.Chrome(options=options)
     elif browser_name == "firefox":
         options = webdriver.FirefoxOptions()
         options.add_argument("--width=1920")
         options.add_argument("--height=1080")
-        service = FirefoxService(GeckoDriverManager().install())
-        _driver = webdriver.Firefox(service=service, options=options)
+        _driver = webdriver.Firefox(options=options)
     else:
         raise ValueError(f"Unsupported browser: {browser_name}")
 
@@ -87,3 +85,21 @@ def _take_screenshot(driver, nodeid: str) -> None:
         logger.error(f"Screenshot saved: {filepath}")
     except Exception as e:
         logger.error(f"Failed to save screenshot: {e}")
+
+
+@pytest.fixture
+def home(driver) -> HomePage:
+    """Return HomePage instance."""
+    return HomePage(driver)
+
+
+@pytest.fixture
+def careers(driver) -> CareersPage:
+    """Return CareersPage instance."""
+    return CareersPage(driver)
+
+
+@pytest.fixture
+def positions(driver) -> OpenPositionsPage:
+    """Return OpenPositionsPage instance."""
+    return OpenPositionsPage(driver)
