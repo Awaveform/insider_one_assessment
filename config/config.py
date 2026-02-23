@@ -1,26 +1,60 @@
-class Config:
-    """Central configuration for all test modules."""
+import configparser
+import os
+
+from dotenv import load_dotenv
+from pydantic_settings import BaseSettings
+
+# ---------------------------------------------------------------------------
+# Resolve the .env path declared in pytest.ini
+# ---------------------------------------------------------------------------
+_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_pytest_ini_path = os.path.join(_root, "pytest.ini")
+
+_config = configparser.ConfigParser()
+_config.read(_pytest_ini_path)
+
+path_env_file = os.path.join(
+    _root, _config.get("pytest", "env_file", fallback=".env").strip()
+)
+
+load_dotenv(path_env_file)
+
+
+# ---------------------------------------------------------------------------
+# Settings — single source of truth for the whole test suite
+# ---------------------------------------------------------------------------
+class Settings(BaseSettings):
+    """Project-wide settings loaded from the .env file declared in pytest.ini."""
 
     # UI Test URLs
-    INSIDER_HOME_URL = "https://insiderone.com/"
-    INSIDER_CAREERS_QA_URL = "https://insiderone.com/careers/quality-assurance/"
-    INSIDER_OPEN_POSITIONS_URL = "https://insiderone.com/careers/open-positions/"
+    insider_home_url: str
+    insider_careers_qa_url: str
+    insider_open_positions_url: str
 
     # API Test URLs
-    PETSTORE_BASE_URL = "https://petstore.swagger.io/v2"
+    petstore_base_url: str
 
     # Load Test URLs
-    N11_BASE_URL = "https://www.n11.com"
+    n11_base_url: str
 
     # Timeouts (seconds)
-    DEFAULT_TIMEOUT = 15
-    SHORT_TIMEOUT = 5
-    LONG_TIMEOUT = 30
+    default_timeout: int
+    short_timeout: int
+    long_timeout: int
 
     # Browser defaults
-    DEFAULT_BROWSER = "chrome"
-    WINDOW_WIDTH = 1920
-    WINDOW_HEIGHT = 1080
+    default_browser: str
+    window_width: int
+    window_height: int
 
     # Lever application form domain (for redirect verification)
-    LEVER_DOMAIN = "jobs.lever.co"
+    lever_domain: str
+
+    model_config = {
+        "env_file": path_env_file,
+        "env_file_encoding": "utf-8",
+    }
+
+
+# noinspection PyArgumentList
+settings = Settings()

@@ -2,7 +2,7 @@ import logging
 
 from selenium.webdriver.common.by import By
 
-from config.config import Config
+from config.config import settings
 from pages.base_page import BasePage
 
 logger = logging.getLogger(__name__)
@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 class CareersPage(BasePage):
     """Page Object for the Insider One Careers / Quality Assurance page."""
 
-    URL = Config.INSIDER_CAREERS_QA_URL
+    URL = settings.insider_careers_qa_url
 
     # Locators
     PAGE_TITLE = (By.CSS_SELECTOR, "h1, .big-title")
@@ -27,7 +27,7 @@ class CareersPage(BasePage):
         return self
 
     def click_see_all_qa_jobs(self) -> None:
-        """Scroll to and click 'See all QA jobs' link."""
+        """Scroll to and click 'See all QA jobs', then wait for the Open Positions page to load."""
         self.scroll_to_element(self.SEE_ALL_QA_JOBS)
         self.click(self.SEE_ALL_QA_JOBS)
         self.find_visible_and_selected(self.QA_DEPARTMENT, timeout=60)

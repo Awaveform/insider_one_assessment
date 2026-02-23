@@ -7,8 +7,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
 
-
-from config.config import Config
+from config.config import settings
 from pages.base_page import BasePage
 
 logger = logging.getLogger(__name__)
@@ -16,13 +15,22 @@ logger = logging.getLogger(__name__)
 
 @dataclass(frozen=True)
 class BlockCheckResult:
+    """Result of a homepage block visibility check.
+
+    Attributes:
+        missing: Names of blocks that were not visible.
+        errors:  Error messages for blocks that raised exceptions.
+    """
+
     missing: list[str]
     errors: list[str]
 
     def ok(self) -> bool:
+        """Return True when no blocks are missing and no errors occurred."""
         return not self.missing and not self.errors
 
     def to_message(self) -> str:
+        """Return a human-readable summary of the check result."""
         parts: list[str] = []
 
         if self.missing:
@@ -43,25 +51,15 @@ class BlockCheckResult:
 class HomePage(BasePage):
     """Page Object for the Insider One homepage (insiderone.com)."""
 
-    URL = Config.INSIDER_HOME_URL
+    URL = settings.insider_home_url
 
-    # Locators
-    DEMO_BTN = (By.CSS_SELECTOR, "#navigation .btn.btn-primary")
-    LOGIN_BTN = (
-        By.XPATH,
-        '//*[@class="header-top-action"]//*[normalize-space(.)="Login"]',
-    )
-
+    # --- Navigation ---
     COOKIE_ACCEPT = (By.ID, "wt-cli-accept-all-btn")
 
+    # --- Page sections ---
     HEADER = (By.ID, "navigation")
     HERO = (By.CSS_SELECTOR, ".homepage-hero")
     SOCIAL_PROOF = (By.CSS_SELECTOR, ".homepage-social-proof")
-
-    # NOTE: this looks suspicious in your code — it duplicates SOCIAL_PROOF.
-    # If core differentiators has its own block, you likely want a different selector.
-    CORE_DIFFERENTIATORS = (By.CSS_SELECTOR, ".homepage-social-proof")
-
     CAPABILITIES = (By.CSS_SELECTOR, ".homepage-capabilities")
     INSIDER_ONE_AI = (By.CSS_SELECTOR, ".homepage-insider-one-ai")
     CHANNELS = (By.CSS_SELECTOR, ".homepage-channels")
@@ -78,18 +76,13 @@ class HomePage(BasePage):
         self.open(self.URL)
         return self
 
-    def accept_cookies_if_present(self) -> None:
-        """Dismiss the Cookie Consent Banner if it appears."""
-        try:
-            btn = WebDriverWait(self.driver, 5).until(
-                EC.element_to_be_clickable(self.COOKIE_ACCEPT)
-            )
-            btn.click()
-            logger.info("Cookie banner accepted")
-        except TimeoutException:
-            logger.info("Cookie banner not present")
+    def accept_cookies(self) -> None:
+        """Wait for the cookie consent banner and click accept."""
+        logger.info("Waiting for cookie banner and accepting")
+        self.click(self.COOKIE_ACCEPT)
 
     def _scroll_into_view_center(self, locator: tuple[str, str]) -> None:
+        """Scroll the element identified by *locator* to the centre of the viewport."""
         element = self.find(locator)
         self.driver.execute_script(
             "arguments[0].scrollIntoView({block: 'center'});",
@@ -99,22 +92,37 @@ class HomePage(BasePage):
     def _is_block_visible(
             self, locator: tuple[str, str], *, scroll: bool = False
     ) -> bool:
+        """Return True if the block is currently visible.
+
+        Args:
+            locator: Selenium locator tuple for the block element.
+            scroll:  When True, scroll the element into view and wait for
+                     visibility before checking.
+        """
         if scroll:
             self._scroll_into_view_center(locator)
+            return bool(self.find_visible(locator))
         return self.is_displayed(locator)
 
-    def check_main_blocks(self) -> BlockCheckResult:
-        """
-        Check that the main homepage blocks are visible.
+    def is_cookies_modal_displayed(self) -> bool:
+        """Return True if the cookie consent banner is currently visible."""
+        return self.is_displayed(self.COOKIES_MODAL)
 
-        Returns a report (missing blocks + errors) so the test can assert.
-        This keeps assertions out of the Page Object.
+    def check_main_blocks(self) -> BlockCheckResult:
+        """Verify that all main homepage sections are visible.
+
+        Checks each named section in sequence, collecting any that are
+        missing or raise an unexpected exception.  Assertions are left to
+        the calling test so this method remains assertion-free.
+
+        Returns:
+            BlockCheckResult: A frozen dataclass with ``missing`` and
+            ``errors`` lists; call ``.ok()`` to get a single bool.
         """
         checks: list[tuple[str, Callable[[], bool]]] = [
             ("Header", lambda: self._is_block_visible(self.HEADER)),
             ("Hero section", lambda: self._is_block_visible(self.HERO)),
             ("Social proof section", lambda: self._is_block_visible(self.SOCIAL_PROOF)),
-            ("Core differentiators section", lambda: self._is_block_visible(self.CORE_DIFFERENTIATORS)),
             ("Capabilities section", lambda: self._is_block_visible(self.CAPABILITIES)),
             ("Insider One AI section", lambda: self._is_block_visible(self.INSIDER_ONE_AI)),
             ("Channels section", lambda: self._is_block_visible(self.CHANNELS)),
@@ -124,7 +132,6 @@ class HomePage(BasePage):
             ("Resources section", lambda: self._is_block_visible(self.RESOURCES, scroll=True)),
             ("Call to action section", lambda: self._is_block_visible(self.CALL_TO_ACTION)),
             ("Footer", lambda: self._is_block_visible(self.FOOTER)),
-            ("Cookies Modal", lambda: self._is_block_visible(self.COOKIES_MODAL)),
         ]
 
         missing: list[str] = []
@@ -138,6 +145,3 @@ class HomePage(BasePage):
                 errors.append(f"{name}: {type(exc).__name__}: {exc}")
 
         return BlockCheckResult(missing=missing, errors=errors)
-
-    def get_current_url(self) -> str:
-        return self.driver.current_url

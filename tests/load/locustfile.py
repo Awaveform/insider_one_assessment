@@ -77,7 +77,9 @@ class N11SearchUser(HttpUser):
     @task(1)
     @tag("search", "autocomplete")
     def search_autocomplete(self):
-        """Simulate the autocomplete/suggestion AJAX call with partial query."""
+        """
+        Simulate the autocomplete/suggestion AJAX call with partial query.
+        """
         partial = random.choice(SEARCH_TERMS)[:3]
         with self.client.get(
             "/arama",
@@ -89,7 +91,9 @@ class N11SearchUser(HttpUser):
             if response.status_code == 200:
                 response.success()
             else:
-                response.failure(f"Autocomplete returned {response.status_code}")
+                response.failure(
+                    f"Autocomplete returned {response.status_code}"
+                )
 
     @task(2)
     @tag("listing")
@@ -106,4 +110,6 @@ class N11SearchUser(HttpUser):
             if response.status_code == 200:
                 response.success()
             else:
-                response.failure(f"Listing page returned {response.status_code}")
+                response.failure(
+                    f"Listing page returned {response.status_code}"
+                )
