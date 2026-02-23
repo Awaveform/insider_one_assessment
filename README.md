@@ -2,7 +2,7 @@
 
 General notes:
 - .env was pushed for demo purposes
-- sync and async api tests as well
+- sync and async api tests are made just for demo as well
 
 ---
 
