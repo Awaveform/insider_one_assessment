@@ -1,0 +1,97 @@
+# Docker Compose — Insider One QA Assessment
+# Each service runs one test category independently.
+# Reports and screenshots are mounted back to the host.
+#
+# Usage:
+#   docker compose run --rm ui
+#   docker compose run --rm api-sync
+#   docker compose run --rm api-async
+#   docker compose run --rm load
+#
+# Build once before first run:
+#   docker compose build
+
+name: insider-qa
+
+x-base: &base
+  build:
+    context: .
+    dockerfile: Dockerfile
+  env_file: .env
+  volumes:
+    # Mount output directories so results are available on the host
+    - ./reports:/app/reports
+    - ./screenshots:/app/screenshots
+  networks:
+    - qa-net
+
+services:
+
+  # ── UI tests ──────────────────────────────────────────────────────────────────
+  ui:
+    <<: *base
+    container_name: qa-ui
+    # HEADLESS=1 triggers headless Chrome flags in tests/conftest.py
+    environment:
+      - HEADLESS=1
+    command: >
+      bash -c "
+        pytest tests/ui/
+          --browser=chrome
+          --alluredir=reports/allure-results
+          -v
+        ; allure generate reports/allure-results
+            --single-file
+            -o reports/allure-report
+            --clean
+      "
+
+  # ── API tests — synchronous ───────────────────────────────────────────────────
+  api-sync:
+    <<: *base
+    container_name: qa-api-sync
+    command: >
+      bash -c "
+        pytest tests/api/test_pet_crud.py tests/api/test_pet_negative.py
+          --alluredir=reports/allure-results
+          -v
+        ; allure generate reports/allure-results
+            --single-file
+            -o reports/allure-report
+            --clean
+      "
+
+  # ── API tests — asynchronous ──────────────────────────────────────────────────
+  api-async:
+    <<: *base
+    container_name: qa-api-async
+    command: >
+      bash -c "
+        pytest tests/api/test_pet_crud_async.py tests/api/test_pet_negative_async.py
+          --alluredir=reports/allure-results
+          -v
+        ; allure generate reports/allure-results
+            --single-file
+            -o reports/allure-report
+            --clean
+      "
+
+  # ── Load tests ────────────────────────────────────────────────────────────────
+  load:
+    <<: *base
+    container_name: qa-load
+    # Expose Locust web UI on host port 8089 when running in web-UI mode
+    ports:
+      - "8089:8089"
+    command: >
+      locust
+        -f tests/load/locustfile.py
+        --host=https://www.n11.com
+        --users 1
+        --spawn-rate 1
+        --run-time 30s
+        --headless
+
+networks:
+  qa-net:
+    driver: bridge
